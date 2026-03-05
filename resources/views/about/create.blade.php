@@ -2,8 +2,8 @@
 
 @section('content')
     <div class="container">
-        <h1>Create About</h1>
-        <form action="{{ route('about.store') }}" method="POST">
+        <h1>Create Profil</h1>
+        <form action="{{ route('profil.store') }}" method="POST">
             @csrf
             <div>
                 <label>Title</label>

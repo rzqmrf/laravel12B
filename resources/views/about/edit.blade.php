@@ -2,17 +2,17 @@
 
 @section('content')
     <div class="container">
-        <h1>Edit About</h1>
-        <form action="{{ route('about.update', $about) }}" method="POST">
+        <h1>Edit Profil</h1>
+        <form action="{{ route('profil.update', $profil) }}" method="POST">
             @csrf
             @method('PUT')
             <div>
                 <label>Title</label>
-                <input type="text" name="title" value="{{ old('title', $about->title) }}">
+                <input type="text" name="title" value="{{ old('title', $profil->title) }}">
             </div>
             <div>
                 <label>Content</label>
-                <textarea name="content">{{ old('content', $about->content) }}</textarea>
+                <textarea name="content">{{ old('content', $profil->content) }}</textarea>
             </div>
             <button type="submit">Update</button>
         </form>

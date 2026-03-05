@@ -1,10 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AboutControllers;
+use App\Http\Controllers\ProfilController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::resource('about', AboutControllers::class);
+Route::resource('profil', ProfilController::class);

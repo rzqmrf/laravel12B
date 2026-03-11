@@ -12,5 +12,6 @@ Route::get('/about', function () {
     return view('about');
 });
 
-// Route untuk halaman dashboard
-Route::get('/dashboard', [DashboardController::class, 'index']);
+Route::get('/contact', function () {
+    return view('contact');
+});

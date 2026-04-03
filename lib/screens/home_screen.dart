@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/models.dart';
+import '../models/field.dart';
+import '../services/field_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/field_card.dart';
@@ -7,8 +8,31 @@ import 'fields_screen.dart';
 import 'booking_screen.dart';
 import 'status_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<Field> _fields = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFields();
+  }
+
+  Future<void> _loadFields() async {
+    try {
+      final fields = await FieldService.getAll();
+      if (mounted) setState(() { _fields = fields; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,30 +42,33 @@ class HomeScreen extends StatelessWidget {
         title: const Text('E-ReservLap'),
         actions: [
           IconButton(
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const StatusScreen())),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StatusScreen())),
             icon: const Icon(Icons.receipt_long_outlined),
             tooltip: 'Riwayat Booking',
           ),
           const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWelcomeBanner(context),
-            _buildFeatureCards(context),
-            _buildFieldsPreview(context),
-            const SizedBox(height: 32),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _loadFields,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildBanner(),
+              _buildFeatures(),
+              _buildFieldsPreview(),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── Welcome Banner ──────────────────────────────────────────
-  Widget _buildWelcomeBanner(BuildContext context) {
+  Widget _buildBanner() {
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(24),
@@ -53,99 +80,64 @@ class HomeScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.circle, size: 7, color: Color(0xFF90EE90)),
-                SizedBox(width: 6),
-                Text('Sistem Aktif',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500)),
-              ],
-            ),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.circle, size: 7, color: Color(0xFF90EE90)),
+              SizedBox(width: 6),
+              Text('Sistem Aktif', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+            ]),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Selamat Datang di\nE-ReservLap',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              height: 1.25,
-              letterSpacing: -0.3,
-            ),
-          ),
+          const Text('Selamat Datang\ndi E-ReservLap',
+              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, height: 1.25)),
           const SizedBox(height: 6),
-          Text(
-            'Reservasi lapangan olahraga mudah & cepat',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 13,
-            ),
-          ),
+          Text('Reservasi lapangan olahraga mudah & cepat',
+              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13)),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const FieldsScreen())),
-                    icon: const Icon(Icons.stadium_outlined, size: 17),
-                    label: const Text('Lihat Lapangan'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primary,
-                      textStyle: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 13),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
+          Row(children: [
+            Expanded(
+              child: SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FieldsScreen())),
+                  icon: const Icon(Icons.stadium_outlined, size: 17),
+                  label: const Text('Lihat Lapangan'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white, foregroundColor: AppColors.primary,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const BookingScreen())),
-                    icon: const Icon(Icons.calendar_today_outlined, size: 17),
-                    label: const Text('Booking'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white, width: 1.5),
-                      textStyle: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 13),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BookingScreen())),
+                  icon: const Icon(Icons.calendar_today_outlined, size: 17),
+                  label: const Text('Booking'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white, width: 1.5),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ]),
         ],
       ),
     );
   }
 
-  // ── Feature Cards ───────────────────────────────────────────
-  Widget _buildFeatureCards(BuildContext context) {
+  Widget _buildFeatures() {
     final features = [
       (Icons.bolt_outlined, 'Cek Jadwal', 'Realtime availability'),
       (Icons.touch_app_outlined, 'Booking Mudah', 'Proses cepat & simpel'),
@@ -157,10 +149,7 @@ class HomeScreen extends StatelessWidget {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(20, 4, 20, 14),
-          child: SectionHeader(
-            title: 'Fitur Unggulan',
-            subtitle: 'Semua yang Anda butuhkan',
-          ),
+          child: SectionHeader(title: 'Fitur Unggulan', subtitle: 'Semua yang Anda butuhkan'),
         ),
         SizedBox(
           height: 108,
@@ -169,7 +158,7 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemCount: features.length,
-            itemBuilder: (context, i) {
+            itemBuilder: (_, i) {
               final f = features[i];
               return Container(
                 width: 140,
@@ -179,30 +168,17 @@ class HomeScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(f.$1, color: AppColors.primary, size: 19),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(f.$2,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 2),
-                    Text(f.$3,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
-                  ],
-                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
+                    child: Icon(f.$1, color: AppColors.primary, size: 19),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(f.$2, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(f.$3, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                ]),
               );
             },
           ),
@@ -211,9 +187,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ── Fields Preview ──────────────────────────────────────────
-  Widget _buildFieldsPreview(BuildContext context) {
-    final preview = allFields.take(4).toList();
+  Widget _buildFieldsPreview() {
+    final available = _fields.where((f) => f.isAvailable).length;
+    final preview = _fields.take(4).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,37 +198,29 @@ class HomeScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
           child: SectionHeader(
             title: 'Lapangan Tersedia',
-            subtitle: '${allFields.where((f) => f.isAvailable).length} lapangan siap',
+            subtitle: _loading ? 'Memuat...' : '$available lapangan siap',
             trailing: TextButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const FieldsScreen())),
-              child: const Text('Lihat Semua',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FieldsScreen())),
+              child: const Text('Lihat Semua', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             ),
           ),
         ),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.75,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: preview.length,
-          itemBuilder: (ctx, i) => FieldCard(
-            field: preview[i],
-            onBook: () => Navigator.push(
-              ctx,
-              MaterialPageRoute(
-                builder: (_) =>
-                    BookingScreen(preselectedField: preview[i]),
-              ),
+        if (_loading)
+          const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppColors.primary)))
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, childAspectRatio: 0.72, crossAxisSpacing: 12, mainAxisSpacing: 12,
+            ),
+            itemCount: preview.length,
+            itemBuilder: (ctx, i) => FieldCard(
+              field: preview[i],
+              onBook: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => BookingScreen(preselectedField: preview[i]))),
             ),
           ),
-        ),
       ],
     );
   }

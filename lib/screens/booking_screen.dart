@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import '../models/models.dart';
+import '../models/field.dart';
+import '../models/booking.dart';
+import '../services/field_service.dart';
+import '../services/booking_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import 'payment_screen.dart';
 
 class BookingScreen extends StatefulWidget {
-  final SportField? preselectedField;
+  final Field? preselectedField;
   const BookingScreen({super.key, this.preselectedField});
 
   @override
@@ -14,17 +17,21 @@ class BookingScreen extends StatefulWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   final _formKey = GlobalKey<FormState>();
-  SportField? _selectedField;
+  List<Field> _fields = [];
+  Field? _selectedField;
   DateTime? _date;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  bool _isLoading = false;
+  bool _loadingFields = true;
 
   @override
   void initState() {
     super.initState();
     _selectedField = widget.preselectedField;
+    _loadFields();
   }
 
   @override
@@ -34,18 +41,23 @@ class _BookingScreenState extends State<BookingScreen> {
     super.dispose();
   }
 
+  Future<void> _loadFields() async {
+    try {
+      final fields = await FieldService.getAll();
+      if (mounted) setState(() { _fields = fields; _loadingFields = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingFields = false);
+    }
+  }
+
   int get _durationHours {
     if (_startTime == null || _endTime == null) return 0;
-    final startMin = _startTime!.hour * 60 + _startTime!.minute;
-    final endMin = _endTime!.hour * 60 + _endTime!.minute;
-    final diff = endMin - startMin;
+    final diff = (_endTime!.hour * 60 + _endTime!.minute) - (_startTime!.hour * 60 + _startTime!.minute);
     return diff > 0 ? (diff / 60).ceil() : 0;
   }
 
-  int get _totalPrice =>
-      _selectedField == null ? 0 : _selectedField!.pricePerHour * _durationHours;
+  int get _totalPrice => _selectedField == null ? 0 : _selectedField!.pricePerHour * _durationHours;
 
-  // Format price without intl: 80000 → "80.000"
   String _fmtPrice(int p) {
     final s = p.toString();
     final buf = StringBuffer();
@@ -56,15 +68,12 @@ class _BookingScreenState extends State<BookingScreen> {
     return buf.toString();
   }
 
-  String _fmtTime(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  String _fmtTime(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  // Format date without intl
   String _fmtDate(DateTime d) {
     const days = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
     const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    final dayName = days[d.weekday - 1];
-    return '$dayName, ${d.day} ${months[d.month - 1]} ${d.year}';
+    return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
   Future<void> _pickDate() async {
@@ -74,9 +83,7 @@ class _BookingScreenState extends State<BookingScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
       builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.primary),
-        ),
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: AppColors.primary)),
         child: child!,
       ),
     );
@@ -86,41 +93,38 @@ class _BookingScreenState extends State<BookingScreen> {
   Future<void> _pickTime(bool isStart) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: isStart
-          ? const TimeOfDay(hour: 8, minute: 0)
-          : const TimeOfDay(hour: 10, minute: 0),
+      initialTime: isStart ? const TimeOfDay(hour: 8, minute: 0) : const TimeOfDay(hour: 10, minute: 0),
       builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.primary),
-        ),
+        data: Theme.of(ctx).copyWith(colorScheme: const ColorScheme.light(primary: AppColors.primary)),
         child: child!,
       ),
     );
-    if (picked != null) {
-      setState(() {
-        if (isStart) _startTime = picked;
-        else _endTime = picked;
-      });
-    }
+    if (picked != null) setState(() { isStart ? _startTime = picked : _endTime = picked; });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_date == null) { _showErr('Pilih tanggal booking terlebih dahulu.'); return; }
-    if (_startTime == null || _endTime == null) { _showErr('Pilih jam mulai dan jam selesai.'); return; }
+    if (_date == null) { _showErr('Pilih tanggal booking.'); return; }
+    if (_startTime == null || _endTime == null) { _showErr('Pilih jam mulai dan selesai.'); return; }
     if (_durationHours <= 0) { _showErr('Jam selesai harus lebih dari jam mulai.'); return; }
 
-    final booking = BookingData(
-      field: _selectedField!,
-      date: _date!,
-      startTime: _startTime!,
-      endTime: _endTime!,
-      durationHours: _durationHours,
-      totalPrice: _totalPrice,
-      bookingId: 'BK${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-    );
-
-    Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentScreen(booking: booking)));
+    setState(() => _isLoading = true);
+    try {
+      final booking = await BookingService.create(
+        fieldId: _selectedField!.id,
+        date: _date!,
+        startTime: _fmtTime(_startTime!),
+        endTime: _fmtTime(_endTime!),
+        durationHours: _durationHours,
+        totalPrice: _totalPrice,
+      );
+      if (!mounted) return;
+      Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentScreen(booking: booking)));
+    } catch (e) {
+      _showErr(e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _showErr(String msg) {
@@ -145,25 +149,72 @@ class _BookingScreenState extends State<BookingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _stepLabel('1', 'Pilih Lapangan'),
+              const StepLabel(number: '1', label: 'Pilih Lapangan'),
               const SizedBox(height: 10),
-              _fieldDropdown(),
+              _loadingFields
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  : DropdownButtonFormField<Field>(
+                      value: _selectedField,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Pilih Lapangan',
+                        prefixIcon: Icon(Icons.stadium_outlined, size: 20, color: AppColors.textHint),
+                      ),
+                      items: _fields.map((f) => DropdownMenuItem(
+                        value: f,
+                        child: Row(children: [
+                          Expanded(child: Text(f.name, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis)),
+                          if (!f.isAvailable) const Text(' (Penuh)', style: TextStyle(fontSize: 11, color: AppColors.warning)),
+                        ]),
+                      )).toList(),
+                      onChanged: (v) => setState(() => _selectedField = v),
+                      validator: (v) => v == null ? 'Pilih lapangan terlebih dahulu' : null,
+                    ),
               const SizedBox(height: 20),
-              _stepLabel('2', 'Tanggal & Waktu'),
+              const StepLabel(number: '2', label: 'Tanggal & Waktu'),
               const SizedBox(height: 10),
-              _datePicker(),
+              // Date picker
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.white, borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border, width: 1.2),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today_outlined, size: 20, color: AppColors.textHint),
+                    const SizedBox(width: 12),
+                    Text(
+                      _date != null ? _fmtDate(_date!) : 'Pilih tanggal booking',
+                      style: TextStyle(fontSize: 14, color: _date != null ? AppColors.textPrimary : AppColors.textHint),
+                    ),
+                    const Spacer(),
+                    const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textHint),
+                  ]),
+                ),
+              ),
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: _timePicker('Jam Mulai', _startTime, () => _pickTime(true))),
+                Expanded(child: _timeTile('Jam Mulai', _startTime, () => _pickTime(true))),
                 const SizedBox(width: 12),
-                Expanded(child: _timePicker('Jam Selesai', _endTime, () => _pickTime(false))),
+                Expanded(child: _timeTile('Jam Selesai', _endTime, () => _pickTime(false))),
               ]),
-              if (_startTime != null && _endTime != null && _durationHours > 0) ...[
+              if (_durationHours > 0) ...[
                 const SizedBox(height: 12),
-                _durationCard(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
+                  child: Row(children: [
+                    const Icon(Icons.timer_outlined, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 10),
+                    Text('Durasi: $_durationHours jam',
+                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14)),
+                  ]),
+                ),
               ],
               const SizedBox(height: 20),
-              _stepLabel('3', 'Data Pemesan'),
+              const StepLabel(number: '3', label: 'Data Pemesan'),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _nameCtrl,
@@ -184,14 +235,12 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Nomor WA wajib diisi' : null,
               ),
-              const SizedBox(height: 24),
-              if (_totalPrice > 0) _priceSummary(),
-              const SizedBox(height: 16),
-              PrimaryButton(
-                label: 'Lanjut ke Pembayaran',
-                icon: Icons.arrow_forward_rounded,
-                onPressed: _selectedField != null ? _submit : null,
-              ),
+              if (_totalPrice > 0) ...[
+                const SizedBox(height: 20),
+                _priceSummary(),
+              ],
+              const SizedBox(height: 20),
+              PrimaryButton(label: 'Lanjut ke Pembayaran', icon: Icons.arrow_forward_rounded, isLoading: _isLoading, onPressed: _submit),
               const SizedBox(height: 24),
             ],
           ),
@@ -200,73 +249,13 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _stepLabel(String num, String label) {
-    return Row(children: [
-      Container(
-        width: 24, height: 24,
-        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-        child: Center(child: Text(num, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
-      ),
-      const SizedBox(width: 10),
-      Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-    ]);
-  }
-
-  Widget _fieldDropdown() {
-    return DropdownButtonFormField<SportField>(
-      value: _selectedField,
-      isExpanded: true,
-      decoration: const InputDecoration(
-        labelText: 'Pilih Lapangan',
-        prefixIcon: Icon(Icons.stadium_outlined, size: 20, color: AppColors.textHint),
-      ),
-      items: allFields.map((f) => DropdownMenuItem(
-        value: f,
-        child: Row(children: [
-          Text(f.emoji, style: const TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(f.name, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis)),
-          if (!f.isAvailable)
-            const Text(' (Penuh)', style: TextStyle(fontSize: 11, color: AppColors.warning)),
-        ]),
-      )).toList(),
-      onChanged: (v) => setState(() => _selectedField = v),
-      validator: (v) => v == null ? 'Pilih lapangan terlebih dahulu' : null,
-    );
-  }
-
-  Widget _datePicker() {
-    return GestureDetector(
-      onTap: _pickDate,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border, width: 1.2),
-        ),
-        child: Row(children: [
-          const Icon(Icons.calendar_today_outlined, size: 20, color: AppColors.textHint),
-          const SizedBox(width: 12),
-          Text(
-            _date != null ? _fmtDate(_date!) : 'Pilih tanggal booking',
-            style: TextStyle(fontSize: 14, color: _date != null ? AppColors.textPrimary : AppColors.textHint),
-          ),
-          const Spacer(),
-          const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textHint),
-        ]),
-      ),
-    );
-  }
-
-  Widget _timePicker(String label, TimeOfDay? time, VoidCallback onTap) {
+  Widget _timeTile(String label, TimeOfDay? time, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.white, borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border, width: 1.2),
         ),
         child: Row(children: [
@@ -274,28 +263,12 @@ class _BookingScreenState extends State<BookingScreen> {
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
-            Text(
-              time != null ? _fmtTime(time) : '--:--',
-              style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w700,
-                color: time != null ? AppColors.textPrimary : AppColors.textHint,
-              ),
-            ),
+            Text(time != null ? _fmtTime(time) : '--:--',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                    color: time != null ? AppColors.textPrimary : AppColors.textHint)),
           ]),
         ]),
       ),
-    );
-  }
-
-  Widget _durationCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
-      child: Row(children: [
-        const Icon(Icons.timer_outlined, color: AppColors.primary, size: 18),
-        const SizedBox(width: 10),
-        Text('Durasi: $_durationHours jam', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14)),
-      ]),
     );
   }
 
@@ -303,14 +276,13 @@ class _BookingScreenState extends State<BookingScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        color: AppColors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border),
       ),
       child: Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('Harga / jam', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          Text('Rp ${_fmtPrice(_selectedField?.pricePerHour ?? 0)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          Text('Rp ${_fmtPrice(_selectedField?.pricePerHour ?? 0)}',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         ]),
         const SizedBox(height: 8),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -319,8 +291,10 @@ class _BookingScreenState extends State<BookingScreen> {
         ]),
         const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider()),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('Total Pembayaran', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          Text('Rp ${_fmtPrice(_totalPrice)}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.primary)),
+          const Text('Total Pembayaran',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text('Rp ${_fmtPrice(_totalPrice)}',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.primary)),
         ]),
       ]),
     );

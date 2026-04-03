@@ -30,8 +30,10 @@ class GradientButton extends StatelessWidget {
             foregroundColor: Colors.white,
             side: const BorderSide(color: Colors.white, width: 1.5),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            textStyle:
+                const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
         ),
       );
@@ -45,7 +47,8 @@ class GradientButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryStart.withOpacity(0.35),
+              color: AppTheme.primaryStart?.withOpacity(0.35) ??
+                  Colors.transparent,
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),

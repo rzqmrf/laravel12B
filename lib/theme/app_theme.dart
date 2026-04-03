@@ -134,4 +134,10 @@ class AppTheme {
           behavior: SnackBarBehavior.floating,
         ),
       );
+
+  static Color? get primaryStart => null;
+
+  static Color? get textMuted => null;
+
+  static Gradient? get primaryGradient => null;
 }

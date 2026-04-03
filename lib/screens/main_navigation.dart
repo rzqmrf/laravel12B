@@ -3,7 +3,6 @@ import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'fields_screen.dart';
 import 'booking_screen.dart';
-import 'admin_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -19,7 +18,6 @@ class _MainNavigationState extends State<MainNavigation> {
     HomeScreen(),
     FieldsScreen(),
     BookingScreen(),
-    AdminScreen(),
   ];
 
   @override

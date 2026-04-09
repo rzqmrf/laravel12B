@@ -4,35 +4,20 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FieldController;
 
+Route::get('/', fn() => view('home'));
+Route::get('/about', fn() => view('about'));
+Route::get('/contact', fn() => view('contact'));
+Route::get('/features', fn() => view('features'));
+
+// Admin pages
+Route::prefix('admin')->group(function () {
+    Route::get('/', fn() => view('admin.dashboard'));
+    Route::get('/users', fn() => view('admin.users'));
+    Route::get('/fields', fn() => view('admin.fields'));
+});
+
+// API
 Route::prefix('api')->group(function () {
     Route::apiResource('users', UserController::class);
     Route::apiResource('fields', FieldController::class);
-});
-
-// Route untuk halaman home
-Route::get('/', function () {
-    return view('home');
-});
-
-// Route untuk halaman about
-Route::get('/about', function () {
-    return view('about');
-});
-
-// Route untuk halaman contact
-Route::get('/contact', function () {
-    return view('contact');
-});
-
-// Route untuk halaman features
-Route::get('/features', function () {
-    return view('features');
-});
-
-Route::get('/users-page', function () {
-    return view('users');
-});
-
-Route::get('/fields', function () {
-    return view('fields');
 });

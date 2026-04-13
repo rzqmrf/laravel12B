@@ -44,6 +44,27 @@
             <div class="stat-lbl">Lapangan Unavailable</div>
         </div>
     </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#fef3c7;color:#92400e">📅</div>
+        <div>
+            <div class="stat-num" id="total-schedules">—</div>
+            <div class="stat-lbl">Total Jadwal</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#ede9fe;color:#5b21b6">📋</div>
+        <div>
+            <div class="stat-num" id="total-bookings">—</div>
+            <div class="stat-lbl">Total Booking</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#fce7f3;color:#9d174d">💳</div>
+        <div>
+            <div class="stat-num" id="total-payments">—</div>
+            <div class="stat-lbl">Total Pembayaran</div>
+        </div>
+    </div>
 </div>
 
 {{-- QUICK ACCESS --}}
@@ -70,6 +91,30 @@
                 </div>
                 <span class="quick-arrow">→</span>
             </a>
+            <a href="/admin/schedules" class="quick-link">
+                <span class="quick-icon">📅</span>
+                <div>
+                    <div class="quick-title">Kelola Schedules</div>
+                    <div class="quick-desc">Atur jadwal tiap lapangan</div>
+                </div>
+                <span class="quick-arrow">→</span>
+            </a>
+            <a href="/admin/bookings" class="quick-link">
+                <span class="quick-icon">📋</span>
+                <div>
+                    <div class="quick-title">Kelola Bookings</div>
+                    <div class="quick-desc">Monitor semua reservasi</div>
+                </div>
+                <span class="quick-arrow">→</span>
+            </a>
+            <a href="/admin/payments" class="quick-link">
+                <span class="quick-icon">💳</span>
+                <div>
+                    <div class="quick-title">Kelola Payments</div>
+                    <div class="quick-desc">Monitor status pembayaran</div>
+                </div>
+                <span class="quick-arrow">→</span>
+            </a>
         </div>
     </div>
 
@@ -90,6 +135,18 @@
             <div class="status-row">
                 <span>API Fields</span>
                 <span class="status-ok" id="status-fields">● Mengecek...</span>
+            </div>
+            <div class="status-row">
+                <span>API Schedules</span>
+                <span class="status-ok" id="status-schedules">● Mengecek...</span>
+            </div>
+            <div class="status-row">
+                <span>API Bookings</span>
+                <span class="status-ok" id="status-bookings">● Mengecek...</span>
+            </div>
+            <div class="status-row">
+                <span>API Payments</span>
+                <span class="status-ok" id="status-payments">● Mengecek...</span>
             </div>
         </div>
     </div>
@@ -228,7 +285,7 @@
     font-weight: 500;
 }
 
-.status-ok { color: #16a34a; font-weight: 700; font-size: 13px; }
+.status-ok  { color: #16a34a; font-weight: 700; font-size: 13px; }
 .status-err { color: #dc2626; font-weight: 700; font-size: 13px; }
 
 @media (max-width: 1024px) {
@@ -244,23 +301,31 @@
 <script>
 const CSRF_TOKEN = '{{ csrf_token() }}';
 
-// Load statistik
 Promise.all([
     fetch('/api/users').then(r => r.json()),
-    fetch('/api/fields').then(r => r.json())
-]).then(([users, fields]) => {
-    document.getElementById('total-users').textContent      = users.length;
-    document.getElementById('total-fields').textContent     = fields.length;
-    document.getElementById('available-fields').textContent = fields.filter(f => f.status === 'available').length;
+    fetch('/api/fields').then(r => r.json()),
+    fetch('/api/schedules').then(r => r.json()),
+    fetch('/api/bookings').then(r => r.json()),
+    fetch('/api/payments').then(r => r.json()),
+]).then(([users, fields, schedules, bookings, payments]) => {
+    document.getElementById('total-users').textContent        = users.length;
+    document.getElementById('total-fields').textContent       = fields.length;
+    document.getElementById('available-fields').textContent   = fields.filter(f => f.status === 'available').length;
     document.getElementById('unavailable-fields').textContent = fields.filter(f => f.status === 'unavailable').length;
+    document.getElementById('total-schedules').textContent    = schedules.length;
+    document.getElementById('total-bookings').textContent     = bookings.length;
+    document.getElementById('total-payments').textContent     = payments.length;
 
-    document.getElementById('status-users').textContent  = '● Online';
-    document.getElementById('status-fields').textContent = '● Online';
+    document.getElementById('status-users').textContent     = '● Online';
+    document.getElementById('status-fields').textContent    = '● Online';
+    document.getElementById('status-schedules').textContent = '● Online';
+    document.getElementById('status-bookings').textContent  = '● Online';
+    document.getElementById('status-payments').textContent  = '● Online';
 }).catch(() => {
-    document.getElementById('status-users').className  = 'status-err';
-    document.getElementById('status-fields').className = 'status-err';
-    document.getElementById('status-users').textContent  = '● Error';
-    document.getElementById('status-fields').textContent = '● Error';
+    ['status-users','status-fields','status-schedules','status-bookings','status-payments'].forEach(id => {
+        document.getElementById(id).className   = 'status-err';
+        document.getElementById(id).textContent = '● Error';
+    });
 });
 </script>
 

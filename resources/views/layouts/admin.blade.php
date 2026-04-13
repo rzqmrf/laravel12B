@@ -209,6 +209,22 @@
             <a href="/admin/fields" class="sidebar-link {{ request()->is('admin/fields') ? 'active' : '' }}">
                 <span class="icon">🏟️</span> Fields
             </a>
+
+            <a href="/admin/slots" class="sidebar-link {{ request()->is('admin/slots') ? 'active' : '' }}">
+                <span class="icon">🕐</span> Slots
+            </a>
+
+            <a href="/admin/schedules" class="sidebar-link {{ request()->is('admin/schedules') ? 'active' : '' }}">
+            <span class="icon">📅</span> Schedules
+            </a>
+
+            <a href="/admin/bookings" class="sidebar-link {{ request()->is('admin/bookings') ? 'active' : '' }}">
+                <span class="icon">📋</span> Bookings
+            </a>
+
+            <a href="/admin/payments" class="sidebar-link {{ request()->is('admin/payments') ? 'active' : '' }}">
+                <span class="icon">💳</span> Payments
+            </a>
         </nav>
 
         <div class="sidebar-footer">

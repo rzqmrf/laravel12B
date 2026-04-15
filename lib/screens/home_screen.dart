@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SectionHeader(title: 'Fitur Unggulan', subtitle: 'Semua yang Anda butuhkan'),
       ),
       SizedBox(
-        height: 130,
+        height: 140,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -176,6 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildFieldsPreview() {
     final available = _fields.where((f) => f.isAvailable).length;
     final preview = _fields.take(4).toList();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth > 600;
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
@@ -195,8 +198,11 @@ class _HomeScreenState extends State<HomeScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, childAspectRatio: 0.58, crossAxisSpacing: 12, mainAxisSpacing: 12,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isWide ? 3 : 2,
+            childAspectRatio: isWide ? 0.85 : 0.72,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           itemCount: preview.length,
           itemBuilder: (ctx, i) => FieldCard(

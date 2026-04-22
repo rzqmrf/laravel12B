@@ -21,5 +21,11 @@ class DatabaseSeeder extends Seeder
             'password' => \Illuminate\Support\Facades\Hash::make('password'),
             'role' => 'admin', // Pastiin kolom 'role' ada di migrasi tabel user lu!
         ]);
+
+        $this->call([
+            FieldSeeder::class,
+            ScheduleSeeder::class,
+            SlotSeeder::class,
+        ]);
     }
 }

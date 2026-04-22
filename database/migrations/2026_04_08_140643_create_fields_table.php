@@ -14,9 +14,10 @@ return new class extends Migration
     {
         Schema::create('fields', function (Blueprint $table) {
             $table->id();
-            $table->string('name');           // nama lapangan
+            $table->string('name');         // nama lapangan
             $table->string('type');           // jenis: futsal, badminton, dll
             $table->decimal('price'); // harga per jam
+            $table->string('foto_lapangan');
             $table->enum('status', ['available', 'unavailable'])->default('available');
             $table->text('description')->nullable();
             $table->timestamps();

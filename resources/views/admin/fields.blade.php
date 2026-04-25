@@ -605,7 +605,11 @@
     }
 
     function load() {
-        fetch('/api/fields')
+        fetch('/api/fields', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
             .then(res => {
                 if (!res.ok) throw new Error('Gagal memuat data');
                 return res.json();
@@ -622,9 +626,9 @@
                         const badge = f.status === 'available' ?
                             '<span class="badge badge-available">● Available</span>' :
                             '<span class="badge badge-unavailable">● Unavailable</span>';
-                        const thumb = f.foto_lapangan
-                            ? `<img src="/storage/${f.foto_lapangan}" class="table-thumb" alt="Foto" loading="lazy">`
-                            : `<span class="no-thumb">🏟️</span>`;
+                        const thumb = f.foto_lapangan ?
+                            `<img src="/storage/${f.foto_lapangan}" class="table-thumb" alt="Foto" loading="lazy">` :
+                            `<span class="no-thumb">🏟️</span>`;
                         html += `
                     <tr>
                         <td><span style="font-family:'Space Grotesk',monospace;font-weight:600;color:var(--text-3)">#${f.id}</span></td>
@@ -683,7 +687,10 @@
 
         fetch(url, {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': getToken() },
+                headers: {
+                    'X-CSRF-TOKEN': getToken(),
+                    'Accept': 'application/json'
+                },
                 body: formData
             })
             .then(res => {
@@ -703,22 +710,28 @@
     function edit(id) {
         const f = fieldsCache[id];
         if (!f) return;
+
         document.getElementById('id').value = f.id;
         document.getElementById('name').value = f.name;
         document.getElementById('type').value = f.type;
-        document.getElementById('price').value = f.price;
+
+        // PERBAIKAN: Gunakan Math.floor untuk menghilangkan .00
+        document.getElementById('price').value = Math.floor(f.price);
+
         document.getElementById('status').value = f.status;
         document.getElementById('description').value = f.description ?? '';
         document.getElementById('form-title').textContent = `Edit Lapangan — ${f.name}`;
 
-        // Tampilkan foto yang sudah ada (jika ada)
         if (f.foto_lapangan) {
             showPreview(`/storage/${f.foto_lapangan}`);
         } else {
             clearPhoto();
         }
 
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
     }
 
     function hapus(id) {

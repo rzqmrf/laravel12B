@@ -1,11 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\Api\FieldController;
-use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\ScheduleController;
-use App\Http\Controllers\Api\SlotController;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -27,24 +21,6 @@ Route::prefix('admin')->group(function () {
     Route::get('/slots', fn() => view('admin.slots')); 
 });
 
-// ── API ───────────────────────────────────────────
-Route::prefix('api')->group(function () {
-    Route::apiResource('users', UserController::class);
-    Route::apiResource('fields', FieldController::class);
-    Route::apiResource('schedules', ScheduleController::class);  // tambah
-    Route::apiResource('bookings', BookingController::class);    // tambah
-    Route::apiResource('payments', PaymentController::class);    // tambah
-    Route::apiResource('slots', SlotController::class);
-    Route::get('fields/{fieldId}/slots', [SlotController::class, 'byFieldAndDate']);
-    Route::post('slots/generate', [SlotController::class, 'generate']);
-
-    // Route tambahan
-    Route::get('fields/{fieldId}/schedules', [ScheduleController::class, 'byField']);
-    Route::get('users/{userId}/bookings', [BookingController::class, 'byUser']);
-
-    // Webhook Midtrans
-    Route::post('midtrans/webhook', [PaymentController::class, 'webhook'])->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
-});
 
 Route::get('login', [AuthController::class, 'showLogin'])->name('login'); // Menampilkan form
 Route::post('login', [AuthController::class, 'login'])->name('login.process'); // Proses submit

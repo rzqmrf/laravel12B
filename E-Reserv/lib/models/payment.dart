@@ -1,6 +1,6 @@
 import 'booking.dart';
 
-enum PaymentMethod { bankTransfer, eWallet }
+enum PaymentMethod { midtrans, manualTransfer }
 enum PaymentStatus { unpaid, paid, failed }
 
 class Payment {
@@ -29,22 +29,23 @@ class Payment {
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) => Payment(
-        id: json['id'],
-        bookingId: json['booking_id'],
-        amount: json['amount'],
-        method: _parseMethod(json['method']),
-        status: _parseStatus(json['status']),
+        id: (json['id'] is num) ? (json['id'] as num).toInt() : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
+        bookingId: (json['booking_id'] is num) ? (json['booking_id'] as num).toInt() : int.tryParse(json['booking_id']?.toString() ?? '0') ?? 0,
+        amount: (json['amount'] is num) ? (json['amount'] as num).toInt() : int.tryParse(json['amount']?.toString() ?? '0') ?? 0,
+        method: _parseMethod(json['method']?.toString() ?? ''),
+        status: _parseStatus(json['status']?.toString() ?? ''),
         proofUrl: json['proof_url'],
-        paidAt: json['paid_at'] != null ? DateTime.parse(json['paid_at']) : null,
-        createdAt: DateTime.parse(json['created_at']),
+        paidAt: json['paid_at'] != null ? DateTime.tryParse(json['paid_at'].toString()) : null,
+        createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
         booking: json['booking'] != null ? Booking.fromJson(json['booking']) : null,
       );
+
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'booking_id': bookingId,
         'amount': amount,
-        'method': method == PaymentMethod.bankTransfer ? 'bank_transfer' : 'e_wallet',
+        'method': method == PaymentMethod.midtrans ? 'midtrans' : 'manual_transfer',
         'status': status.name,
         'proof_url': proofUrl,
         'paid_at': paidAt?.toIso8601String(),
@@ -52,7 +53,8 @@ class Payment {
       };
 
   static PaymentMethod _parseMethod(String m) {
-    return m == 'bank_transfer' ? PaymentMethod.bankTransfer : PaymentMethod.eWallet;
+    if (m == 'manual_transfer') return PaymentMethod.manualTransfer;
+    return PaymentMethod.midtrans;
   }
 
   static PaymentStatus _parseStatus(String s) {
@@ -63,3 +65,4 @@ class Payment {
     }
   }
 }
+

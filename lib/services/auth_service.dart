@@ -1,82 +1,92 @@
 // ============================================================
 // auth_service.dart
-// TODO (backend): sambungkan ke endpoint Laravel
 // ============================================================
 
 import '../models/user.dart';
 import 'api_service.dart';
 
 class AuthService {
-  // Session user yang sedang login (in-memory)
   static User? _currentUser;
   static bool _isLoggedIn = false;
 
   static User? get currentUser => _currentUser;
   static bool get isLoggedIn => _isLoggedIn;
 
-  // TODO: POST /api/login
-  static Future<void> login({required String email, required String password}) async {
-    // Ganti dengan:
-    // final res = await ApiService.post('/login', {'email': email, 'password': password});
-    // ApiService.setToken(res['token']);
-    // _currentUser = User.fromJson(res['user']);
-    // _isLoggedIn = true;
+  // Cek apakah user adalah admin
+  static bool get isAdmin => _currentUser?.email == 'admin@gmail.com';
 
-    await Future.delayed(const Duration(seconds: 1));
+  // POST /api/login
+  static Future<void> login(
+      {required String email, required String password}) async {
+    // 1. Validasi Client-side: Admin tidak boleh login via app ini
+    if (email.toLowerCase() == 'admin@gmail.com') {
+      throw Exception(
+          'Akses ditolak: Admin tidak diperbolehkan login melalui aplikasi ini.');
+    }
 
-    // Dummy user setelah login
-    _currentUser = User(
-      id: 1,
-      name: 'Budi Santoso',
-      email: email,
-      phone: '081234567890',
-      createdAt: DateTime.now(),
-    );
+    final res = await ApiService.post('/login', {
+      'email': email,
+      'password': password,
+    });
+
+    ApiService.setToken(res['token']);
+    _currentUser = User.fromJson(res['user']);
     _isLoggedIn = true;
   }
 
-  // TODO: POST /api/register
+  // POST /api/register
   static Future<void> register({
     required String name,
     required String email,
     required String phone,
     required String password,
   }) async {
-    // Ganti dengan:
-    // final res = await ApiService.post('/register', {
-    //   'name': name, 'email': email, 'phone': phone, 'password': password,
-    // });
-    // ApiService.setToken(res['token']);
-    // _currentUser = User.fromJson(res['user']);
-    // _isLoggedIn = true;
+    // Opsional: Cegah registrasi menggunakan email admin
+    if (email.toLowerCase() == 'admin@gmail.com') {
+      throw Exception('Email ini tidak dapat digunakan untuk registrasi.');
+    }
 
-    await Future.delayed(const Duration(seconds: 1));
+    final res = await ApiService.post('/register', {
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'password': password,
+    });
 
-    _currentUser = User(
-      id: 1,
-      name: name,
-      email: email,
-      phone: phone,
-      createdAt: DateTime.now(),
-    );
+    ApiService.setToken(res['token']);
+    _currentUser = User.fromJson(res['user']);
     _isLoggedIn = true;
   }
 
-  // TODO: POST /api/logout
   static Future<void> logout() async {
-    // await ApiService.post('/logout', {});
-    ApiService.clearToken();
-    _currentUser = null;
-    _isLoggedIn = false;
+    try {
+      await ApiService.post('/logout', {});
+    } catch (e) {
+      // Abaikan error
+    } finally {
+      ApiService.clearToken();
+      _currentUser = null;
+      _isLoggedIn = false;
+    }
   }
 
-  // TODO: GET /api/user
   static Future<User?> getProfile() async {
-    // final res = await ApiService.get('/user');
-    // _currentUser = User.fromJson(res['data']);
-    // return _currentUser;
+    try {
+      final res = await ApiService.get('/user');
+      final user = User.fromJson(res['data'] ?? res);
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _currentUser;
+      // 2. Validasi tambahan saat session check
+      if (user.email == 'admin@gmail.com') {
+        await logout();
+        return null;
+      }
+
+      _currentUser = user;
+      _isLoggedIn = true;
+      return _currentUser;
+    } catch (e) {
+      _isLoggedIn = false;
+      return null;
+    }
   }
 }

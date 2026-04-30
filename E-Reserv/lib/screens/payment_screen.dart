@@ -14,21 +14,37 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
+  PaymentMethod _selectedMethod = PaymentMethod.midtrans;
   bool _isLoading = false;
+
 
   Future<void> _pay() async {
     setState(() => _isLoading = true);
     try {
-      // Dapat snap token dari Laravel → Midtrans
-      await PaymentService.getSnapToken(widget.booking.id, widget.booking.totalPrice);
-      // TODO: buka Midtrans Snap UI dengan snap_token
-      // Sekarang simulasi sukses
-      await Future.delayed(const Duration(seconds: 2));
+      if (_selectedMethod == PaymentMethod.midtrans) {
+        // Dapat snap token dari Laravel → Midtrans
+        final snapToken = await PaymentService.getSnapToken(widget.booking.id, widget.booking.totalPrice);
+        // TODO: Buka Midtrans Snap UI di Flutter (memerlukan plugin midtrans_sdk atau webview)
+        
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Mengarahkan ke Midtrans... (Simulasi)'),
+          backgroundColor: AppColors.primary,
+        ));
+        await Future.delayed(const Duration(seconds: 2));
+      } else {
+        // Manual Transfer
+        await PaymentService.create(
+          bookingId: widget.booking.id,
+          amount: widget.booking.totalPrice,
+          method: PaymentMethod.manualTransfer,
+        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Booking berhasil! Silakan upload bukti transfer.'),
+          backgroundColor: AppColors.success,
+        ));
+      }
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Pembayaran berhasil! Menunggu konfirmasi.'),
-        backgroundColor: AppColors.success,
-      ));
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const StatusScreen()),
@@ -91,48 +107,50 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Midtrans info
-          const Text('Metode Pembayaran',
+          // Metode Pembayaran
+          const Text('Pilih Metode Pembayaran',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
+          
+          // Midtrans Option
+          _buildMethodCard(
+            method: PaymentMethod.midtrans,
+            title: 'Midtrans (Otomatis)',
+            subtitle: 'Transfer Bank, QRIS, E-Wallet, Kartu Kredit',
+            icon: '💳',
+            isSelected: _selectedMethod == PaymentMethod.midtrans,
+          ),
+          const SizedBox(height: 12),
+          
+          // Manual Option
+          _buildMethodCard(
+            method: PaymentMethod.manualTransfer,
+            title: 'Transfer Manual',
+            subtitle: 'Transfer ke Rekening Bank (Upload Bukti)',
+            icon: '🏦',
+            isSelected: _selectedMethod == PaymentMethod.manualTransfer,
+          ),
+          
+          if (_selectedMethod == PaymentMethod.manualTransfer) ...[
+            const SizedBox(height: 16),
+            Container(
               padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(color: const Color(0xFFEEF9F4), borderRadius: BorderRadius.circular(12)),
-                  child: const Center(child: Text('💳', style: TextStyle(fontSize: 22))),
-                ),
-                const SizedBox(width: 14),
-                const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Midtrans Payment', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  Text('Transfer Bank · E-Wallet · QRIS · Kartu Kredit',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                ])),
-                const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+              ),
+              child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Informasi Rekening:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                SizedBox(height: 8),
+                Text('Bank BCA: 1234567890\nA.N. E-Reserv Sports', style: TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5)),
               ]),
             ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(children: [
-              Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
-              SizedBox(width: 8),
-              Expanded(child: Text(
-                'Anda akan diarahkan ke halaman pembayaran Midtrans yang aman.',
-                style: TextStyle(fontSize: 12, color: AppColors.primary),
-              )),
-            ]),
-          ),
-          const SizedBox(height: 28),
+          ],
+          
+          const SizedBox(height: 32),
           PrimaryButton(
-            label: 'Bayar Sekarang',
+            label: _selectedMethod == PaymentMethod.midtrans ? 'Bayar Sekarang' : 'Konfirmasi Booking',
             icon: Icons.payment_rounded,
             isLoading: _isLoading,
             onPressed: _pay,
@@ -142,6 +160,54 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
     );
   }
+
+  Widget _buildMethodCard({
+    required PaymentMethod method,
+    required String title,
+    required String subtitle,
+    required String icon,
+    required bool isSelected,
+  }) {
+    return GestureDetector(
+      onTap: () => setState(() => _selectedMethod = method),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.white : AppColors.white.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(color: AppColors.primary.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
+          ] : [],
+        ),
+        child: Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.primaryLight : const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(child: Text(icon, style: const TextStyle(fontSize: 22))),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600, color: AppColors.textPrimary)),
+            Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          ])),
+          Icon(
+            isSelected ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
+            color: isSelected ? AppColors.primary : AppColors.textHint,
+            size: 22,
+          ),
+        ]),
+      ),
+    );
+  }
+
 
   String _emoji(String cat) {
     const map = {'Futsal': '⚽', 'Badminton': '🏸', 'Basket': '🏀', 'Voli': '🏐', 'Tenis Meja': '🏓', 'Tenis': '🎾'};

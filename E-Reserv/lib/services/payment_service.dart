@@ -11,10 +11,17 @@ class PaymentService {
   static Future<String> getSnapToken(int bookingId, int amount) async {
     final res = await ApiService.post('/payments/store', {
       'booking_id': bookingId, 
-      'amount': amount
+      'amount': amount,
+      'method': 'midtrans',
     });
-    return res['snap_token'];
+    
+    if (res['snap_token'] == null) {
+      throw Exception('Gagal mendapatkan kode pembayaran dari Midtrans. Pastikan Server Key sudah diatur di .env Laravel.');
+    }
+    
+    return res['snap_token'].toString();
   }
+
   // TODO: POST /api/payments
   static Future<Payment> create({
     required int bookingId,
@@ -22,26 +29,16 @@ class PaymentService {
     required PaymentMethod method,
     String? proofUrl,
   }) async {
-    // Dummy - ganti dengan:
-    // final res = await ApiService.post('/payments', {
-    //   'booking_id': bookingId,
-    //   'amount': amount,
-    //   'method': method == PaymentMethod.bankTransfer ? 'bank_transfer' : 'e_wallet',
-    //   'proof_url': proofUrl,
-    // });
-    // return Payment.fromJson(res['data']);
-
-    await Future.delayed(const Duration(seconds: 1));
-    return Payment(
-      id: DateTime.now().millisecondsSinceEpoch,
-      bookingId: bookingId,
-      amount: amount,
-      method: method,
-      status: PaymentStatus.unpaid,
-      proofUrl: proofUrl,
-      createdAt: DateTime.now(),
-    );
+    // Dummy - ganti dengan API asli nanti
+    final res = await ApiService.post('/payments/store', {
+      'booking_id': bookingId,
+      'amount': amount,
+      'method': method == PaymentMethod.manualTransfer ? 'manual_transfer' : 'midtrans',
+      'proof_url': proofUrl,
+    });
+    return Payment.fromJson(res['payment'] ?? res['data']);
   }
+
 
   // TODO: GET /api/payments/{id}
   static Future<Payment> getById(int id) async {

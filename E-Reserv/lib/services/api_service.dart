@@ -5,12 +5,19 @@
 // ============================================================
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Gunakan localhost untuk testing di Web Browser
-  static const String baseUrl = 'http://localhost:8000/api';
+  static String get baseUrl {
+    if (kDebugMode) {
+      try {
+        if (Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+      } catch (e) { /* Bukan mobile/android */ }
+    }
+    return 'http://localhost:8000/api';
+  }
 
   static String? _token; // simpan token setelah login
 

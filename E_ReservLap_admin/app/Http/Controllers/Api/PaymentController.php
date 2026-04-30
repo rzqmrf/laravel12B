@@ -21,53 +21,66 @@ class PaymentController extends Controller
         Config::$is3ds        = config('midtrans.is_3ds');
     }
 
-    // Buat transaksi Midtrans → kirim snap_token ke Flutter
+    // Buat transaksi Midtrans atau Manual → kirim snap_token ke Flutter jika Midtrans
     public function store(Request $request)
     {
         $request->validate([
             'booking_id' => 'required|exists:bookings,id',
+            'method'     => 'nullable|string',
         ]);
 
         $booking = Booking::with(['user', 'field'])->findOrFail($request->booking_id);
+        $method  = $request->method ?? 'midtrans';
 
         // Buat atau ambil payment yang sudah ada
-        $payment = Payment::firstOrCreate(
+        $payment = Payment::updateOrCreate(
             ['booking_id' => $booking->id],
             [
                 'amount' => $booking->total_price,
-                'method' => 'midtrans',
+                'method' => $method,
                 'status' => 'unpaid',
             ]
         );
 
-        // Parameter Midtrans
-        $params = [
-            'transaction_details' => [
-                'order_id'     => $booking->booking_code,
-                'gross_amount' => $booking->total_price,
-            ],
-            'customer_details' => [
-                'first_name' => $booking->user->name,
-                'email'      => $booking->user->email,
-                'phone'      => $booking->user->phone ?? '',
-            ],
-            'item_details' => [
-                [
-                    'id'       => $booking->field->id,
-                    'price'    => $booking->field->price,
-                    'quantity' => $booking->duration_hours,
-                    'name'     => $booking->field->name,
-                ],
-            ],
-        ];
+        $snapToken = null;
 
-        $snapToken = Snap::getSnapToken($params);
+        // Jika Midtrans, buat snap token
+        if ($method === 'midtrans') {
+            // Parameter Midtrans
+            $params = [
+                'transaction_details' => [
+                    'order_id'     => $booking->booking_code . '-' . time(), // Tambah timestamp agar unik jika diulang
+                    'gross_amount' => (int) $booking->total_price,
+                ],
+                'customer_details' => [
+                    'first_name' => $booking->user->name,
+                    'email'      => $booking->user->email,
+                    'phone'      => $booking->user->phone ?? '',
+                ],
+                'item_details' => [
+                    [
+                        'id'       => $booking->field->id,
+                        'price'    => (int) $booking->field->price,
+                        'quantity' => 1, // Durasi biasanya sudah include di total_price
+                        'name'     => $booking->field->name,
+                    ],
+                ],
+            ];
+
+            try {
+                $snapToken = Snap::getSnapToken($params);
+                $payment->update(['snap_token' => $snapToken]);
+            } catch (\Exception $e) {
+                // Log error or handle it
+            }
+        }
 
         return response()->json([
             'snap_token' => $snapToken,
             'payment'    => $payment,
         ]);
     }
+
 
     // Webhook dari Midtrans → otomatis update status
     public function webhook(Request $request)
